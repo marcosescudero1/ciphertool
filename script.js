@@ -468,6 +468,217 @@ function calculateKappa(ciphertext, period) {
     return iocs.length > 0 ? iocs.reduce((a, b) => a + b, 0) / iocs.length : 0;
 }
 
+function plotIoCAnalysis(results, expectedIoC, overallIoC, textLength) {
+    const canvas = document.getElementById('ioc-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Settings
+    const padding = { top: 40, right: 40, bottom: 60, left: 80 };
+    const width = canvas.width - padding.left - padding.right;
+    const height = canvas.height - padding.top - padding.bottom;
+    
+    // Find min/max values
+    const maxPeriod = Math.max(...results.map(r => r.period));
+    const maxKappa = Math.max(...results.map(r => r.kappa));
+    const maxPhi = Math.max(...results.map(r => r.phi));
+    const maxValue = Math.max(maxKappa, maxPhi, expectedIoC, overallIoC);
+    const yMax = Math.min(maxValue * 1.2, 1.0);
+    
+    // Helper functions
+    const scaleX = (period) => padding.left + (period / maxPeriod) * width;
+    const scaleY = (value) => padding.top + height - (value / yMax) * height;
+    
+    // Draw background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grid
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    
+    // Horizontal grid lines
+    for (let i = 0; i <= 10; i++) {
+        const y = padding.top + (height / 10) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + width, y);
+        ctx.stroke();
+        
+        // Y-axis labels
+        const value = (yMax * (10 - i) / 10).toFixed(3);
+        ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(value, padding.left - 10, y + 4);
+    }
+    
+    // Vertical grid lines
+    for (let i = 0; i <= 10; i++) {
+        const x = padding.left + (width / 10) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, padding.top);
+        ctx.lineTo(x, padding.top + height);
+        ctx.stroke();
+        
+        // X-axis labels
+        const period = Math.round((maxPeriod / 10) * i);
+        ctx.fillStyle = '#666';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(period, x, padding.top + height + 20);
+    }
+    
+    // Draw axes
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, padding.top + height);
+    ctx.lineTo(padding.left + width, padding.top + height);
+    ctx.stroke();
+    
+    // Draw expected IoC line
+    ctx.strokeStyle = '#28a745';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    const expectedY = scaleY(expectedIoC);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, expectedY);
+    ctx.lineTo(padding.left + width, expectedY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw overall IoC line
+    ctx.strokeStyle = '#dc3545';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    const overallY = scaleY(overallIoC);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, overallY);
+    ctx.lineTo(padding.left + width, overallY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw Kappa line
+    ctx.strokeStyle = '#ff8c00';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    results.forEach((r, i) => {
+        const x = scaleX(r.period);
+        const y = scaleY(r.kappa);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    // Draw Phi line
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    results.forEach((r, i) => {
+        const x = scaleX(r.period);
+        const y = scaleY(r.phi);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    // Find and mark peaks
+    const threshold = 0.055;
+    ctx.fillStyle = '#ffc107';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    
+    results.forEach((r, i) => {
+        if (r.kappa > threshold && i > 0 && i < results.length - 1) {
+            if (r.kappa > results[i-1].kappa && r.kappa > results[i+1].kappa) {
+                const x = scaleX(r.period);
+                const y = scaleY(r.kappa);
+                
+                // Draw yellow circle
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw label
+                ctx.fillStyle = '#000';
+                ctx.fillText(r.period.toString(), x, y - 12);
+                ctx.fillStyle = '#ffc107';
+            }
+        }
+    });
+    
+    // Draw legend
+    const legendX = padding.left + width - 200;
+    const legendY = padding.top + 10;
+    
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    
+    // Expected IoC
+    ctx.strokeStyle = '#28a745';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY);
+    ctx.lineTo(legendX + 30, legendY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#000';
+    ctx.fillText(`Expected (${expectedIoC.toFixed(5)})`, legendX + 35, legendY + 4);
+    
+    // Overall IoC
+    ctx.strokeStyle = '#dc3545';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 20);
+    ctx.lineTo(legendX + 30, legendY + 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#000';
+    ctx.fillText(`Overall (${overallIoC.toFixed(5)})`, legendX + 35, legendY + 24);
+    
+    // Kappa
+    ctx.strokeStyle = '#ff8c00';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 40);
+    ctx.lineTo(legendX + 30, legendY + 40);
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.fillText('Kappa (avg IoC)', legendX + 35, legendY + 44);
+    
+    // Phi
+    ctx.strokeStyle = '#007bff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 60);
+    ctx.lineTo(legendX + 30, legendY + 60);
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.fillText('Kullback (phi)', legendX + 35, legendY + 64);
+    
+    // Draw title
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('IoC Analysis - Key Length Detection', canvas.width / 2, 25);
+    
+    // Draw axis labels
+    ctx.font = '14px sans-serif';
+    ctx.fillText('Period Size', canvas.width / 2, canvas.height - 10);
+    
+    ctx.save();
+    ctx.translate(15, canvas.height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Index of Coincidence', 0, 0);
+    ctx.restore();
+}
+
 function runIoC() {
     const input = document.getElementById('ioc-input').value;
     const maxPeriod = parseInt(document.getElementById('ioc-max-period').value);
@@ -488,6 +699,12 @@ function runIoC() {
         results.push({ period, kappa, phi });
     }
     
+    // Show canvas
+    document.getElementById('ioc-canvas-container').style.display = 'block';
+    
+    // Plot the graph
+    plotIoCAnalysis(results, expectedIoC, overallIoC, ciphertext.length);
+    
     // Find peaks
     const threshold = 0.055;
     const peaks = results.filter(r => r.kappa > threshold).sort((a, b) => b.kappa - a.kappa);
@@ -497,18 +714,14 @@ function runIoC() {
     output += `Overall IoC: ${overallIoC.toFixed(5)}<br>`;
     output += `Expected IoC (English): ${expectedIoC.toFixed(5)}<br><br>`;
     
-    output += `<strong>Likely Key Lengths (Top 10):</strong><br>`;
-    peaks.slice(0, 10).forEach(r => {
-        output += `<div class="result-item">Period ${r.period}: Kappa = ${r.kappa.toFixed(5)}</div>`;
-    });
-    
-    output += `<br><strong>All Results:</strong><br>`;
-    output += '<div style="max-height: 300px; overflow-y: auto;">';
-    results.forEach(r => {
-        const highlight = r.kappa > threshold ? ' style="background: #fff3cd;"' : '';
-        output += `<div${highlight}>Period ${r.period}: Kappa = ${r.kappa.toFixed(5)}, Phi = ${r.phi.toFixed(5)}</div>`;
-    });
-    output += '</div>';
+    output += `<strong>Likely Key Lengths:</strong><br>`;
+    if (peaks.length === 0) {
+        output += '<em>No clear peaks found. Text might be too short or not polyalphabetic.</em><br>';
+    } else {
+        peaks.slice(0, 10).forEach(r => {
+            output += `<div class="result-item">Period ${r.period}: Kappa = ${r.kappa.toFixed(5)}</div>`;
+        });
+    }
     
     showOutput('ioc-output', output);
 }
