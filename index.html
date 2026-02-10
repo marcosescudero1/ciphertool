@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cryptanalysis Toolkit</title>
+    <title>Cipher Tool</title>
     <style>
         * {
             margin: 0;
@@ -301,8 +301,8 @@
 <body>
     <div class="header">
         <div class="header-content">
-            <h1>🔐 Cryptanalysis Toolkit</h1>
-            <p>A comprehensive collection of cryptographic analysis tools</p>
+            <h1>Cryptanalysis Toolkit</h1>
+            <p>Collection of tools for breaking ciphers and analyzing text</p>
         </div>
     </div>
 
@@ -448,15 +448,15 @@
         <!-- IoC Analyzer -->
         <div id="ioc" class="tool-section">
             <h2 class="tool-title">Index of Coincidence Analyzer</h2>
-            <p class="tool-description">Analyze ciphertext to determine likely key lengths for polyalphabetic ciphers</p>
+            <p class="tool-description">Find likely key lengths for Vigenere and other polyalphabetic ciphers</p>
             
             <div class="instructions">
-                <strong>How to use:</strong>
+                <strong>How it works:</strong>
                 <ul>
-                    <li>Paste your ciphertext below</li>
-                    <li>The tool calculates IoC for different period sizes</li>
-                    <li>Peaks in the graph indicate likely key lengths</li>
-                    <li>Expected IoC for English: ~0.0668</li>
+                    <li>Paste your ciphertext and run the analysis</li>
+                    <li>The graph shows IoC values for different period sizes</li>
+                    <li>Peaks indicate likely key lengths</li>
+                    <li>English text has an IoC around 0.067</li>
                 </ul>
             </div>
 
@@ -472,6 +472,10 @@
 
             <button class="btn btn-primary" onclick="runIoC()">Analyze</button>
             <button class="btn btn-secondary" onclick="clearOutput('ioc-output')">Clear</button>
+
+            <div id="ioc-canvas-container" style="display: none; margin-top: 20px; background: white; padding: 20px; border-radius: 4px;">
+                <canvas id="ioc-canvas" width="1200" height="500"></canvas>
+            </div>
 
             <div id="ioc-output" class="output empty"></div>
         </div>
@@ -557,7 +561,7 @@
     </div>
 
     <div class="footer">
-        Cryptanalysis Toolkit | Tools for CTF and cipher analysis
+        Cryptanalysis Toolkit
     </div>
 
     <script src="script.js"></script>
